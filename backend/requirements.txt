@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pyserial
+pandas
+numpy
+scipy
+reportlab
+python-multipart
