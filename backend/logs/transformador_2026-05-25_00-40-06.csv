@@ -1,0 +1,50 @@
+timestamp_pc,seq,ms_arduino,temperatura_c,vibracao_rms_v,corrente_primario_a,corrente_secundario_a,adc_ntc,adc_vibracao,adc_sct_primario,adc_sct_secundario,alarme_geral,alarme_temperatura,alarme_vibracao,alarme_primario,alarme_secundario,diagnostico_arduino,diagnostico_python,fft_120hz,fft_240hz
+2026-05-25T00:40:08.556,,11287,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:10.281,,12652,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:11.987,,14016,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:13.685,,15381,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:15.402,,16745,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:17.163,,18110,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:18.869,,19474,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:20.672,,20839,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:22.391,,22203,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:24.100,,23568,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:46.125,,1885,,,,,,,,,,verde,verde,verde,verde,['Operacao normal dentro dos limites simulados.'],Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:47.800,,3220,,,,,,,,,,verde,verde,verde,verde,['Operacao normal dentro dos limites simulados.'],Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:49.479,,4555,,,,,,,,,,verde,verde,verde,verde,['Operacao normal dentro dos limites simulados.'],Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:51.145,,5891,,,,,,,,,,verde,verde,verde,verde,['Operacao normal dentro dos limites simulados.'],Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:52.816,,7226,,,,,,,,,,verde,verde,verde,verde,['Operacao normal dentro dos limites simulados.'],Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:54.526,,8561,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:56.246,,9924,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:57.973,,11287,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:40:59.703,,12652,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:01.540,,14016,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:03.234,,15381,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:04.937,,16745,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:06.639,,18110,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:08.360,,19474,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:10.057,,20839,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:12.034,,22203,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:13.775,,23568,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:15.472,,24932,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:17.178,,26297,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:18.885,,27661,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:20.610,,29026,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:22.312,,30390,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:24.015,,31755,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:25.798,,33119,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:27.498,,34484,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:29.206,,35848,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:30.935,,37213,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:32.639,,38577,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:34.342,,39942,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:36.047,,41306,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:37.764,,42671,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:39.467,,44035,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:41.177,,45400,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:42.903,,46764,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:44.613,,48129,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:46.355,,49492,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:48.099,,50857,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:49.821,,52221,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:41:51.577,,53586,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0

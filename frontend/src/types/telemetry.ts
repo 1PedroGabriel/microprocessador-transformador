@@ -9,8 +9,22 @@ export type Alarmes = {
 export type TelemetryPacket = {
   timestamp_pc?: string;
   type?: string;
+  data_mode?: "telemetry" | "samples";
   seq?: number;
   ms?: number;
+  fs?: number;
+  samples?: {
+    ntc?: number[];
+    vibracao?: number[];
+    sct_primario?: number[];
+    sct_secundario?: number[];
+  };
+  sample_stats?: {
+    ntc_avg?: number;
+    vibracao_rms?: number;
+    sct_primario_rms?: number;
+    sct_secundario_rms?: number;
+  };
   adc?: {
     ntc?: number;
     vibracao?: number;

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
+import numpy as np
 import serial.tools.list_ports
 
 from datalogger import DataLogger
@@ -17,9 +19,12 @@ from report_generator import generate_report
 from serial_manager import SerialManager
 
 PORTA_PADRAO = "COM2"
-BAUD_PADRAO = 9600
+BAUD_PADRAO = 57600
 SAMPLE_RATE_HZ = 1000.0
 FFT_BUFFER_SIZE = 256
+ADC_MAX = 1023.0
+TEMP_MAX_C = 100.0
+CURRENT_MAX_A = 20.0
 
 
 class SerialConnectRequest(BaseModel):
@@ -52,7 +57,19 @@ class WebSocketManager:
                 await self.disconnect(websocket)
 
 
-app = FastAPI(title="Transformador Diagnostico")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.loop = asyncio.get_running_loop()
+    datalogger.start_new_session()
+    serial_manager.connect(PORTA_PADRAO, BAUD_PADRAO)
+    try:
+        yield
+    finally:
+        serial_manager.disconnect()
+        datalogger.close()
+
+
+app = FastAPI(title="Transformador Diagnostico", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -69,59 +86,182 @@ reports_dir = Path(__file__).resolve().parent / "reports"
 datalogger = DataLogger(logs_dir)
 
 
+def _to_float_list(values: Any) -> List[float]:
+    if not isinstance(values, list):
+        return []
+    parsed: List[float] = []
+    for value in values:
+        try:
+            parsed.append(float(value))
+        except (TypeError, ValueError):
+            continue
+    return parsed
+
+
+def _calc_stats(values: List[float]) -> tuple[Optional[float], Optional[float]]:
+    if not values:
+        return None, None
+    data = np.array(values, dtype=float)
+    mean = float(data.mean())
+    rms = float(np.sqrt(np.mean(data**2)))
+    return mean, rms
+
+
+def _scale(value: Optional[float], max_input: float, max_output: float) -> Optional[float]:
+    if value is None:
+        return None
+    return (value / max_input) * max_output
+
+
 def handle_packet(packet: Dict[str, Any]) -> None:
-    if packet.get("type") != "telemetry":
+    packet_type = packet.get("type")
+    if packet_type not in {"telemetry", "samples"}:
         return
 
     timestamp_pc = datetime.now().isoformat(timespec="milliseconds")
-    adc = packet.get("adc") or {}
-    medidas = packet.get("medidas") or {}
-    alarmes = packet.get("alarmes") or {}
 
-    fft_120, fft_240 = fft_analyzer.add_sample(adc.get("vibracao"))
-    diagnostico_python = diagnostic_engine.analyze(packet, fft_120, fft_240)
-    diagnostico_arduino = packet.get("diagnostico")
+    if packet_type == "samples":
+        ntc_samples = _to_float_list(packet.get("ntc"))
+        vib_samples = _to_float_list(packet.get("vibracao"))
+        prim_samples = _to_float_list(packet.get("sct_primario"))
+        sec_samples = _to_float_list(packet.get("sct_secundario"))
 
-    payload = {
-        "timestamp_pc": timestamp_pc,
-        "type": "telemetry",
-        "seq": packet.get("seq"),
-        "ms": packet.get("ms"),
-        "adc": adc,
-        "medidas": medidas,
-        "alarmes": alarmes,
-        "diagnostico_arduino": diagnostico_arduino,
-        "diagnostico_python": diagnostico_python,
-        "fft": {
-            "amp_120hz": fft_120,
-            "amp_240hz": fft_240,
-        },
-    }
+        fs = packet.get("fs") or SAMPLE_RATE_HZ
+        try:
+            fs = float(fs)
+        except (TypeError, ValueError):
+            fs = SAMPLE_RATE_HZ
 
-    datalogger.log(
-        {
+        ntc_avg, _ = _calc_stats(ntc_samples)
+        _, vib_rms = _calc_stats(vib_samples)
+        _, prim_rms = _calc_stats(prim_samples)
+        _, sec_rms = _calc_stats(sec_samples)
+
+        temperatura_c = _scale(ntc_avg, ADC_MAX, TEMP_MAX_C)
+        vibracao_rms_v = _scale(vib_rms, ADC_MAX, 1.0)
+        corrente_primario_a = _scale(prim_rms, ADC_MAX, CURRENT_MAX_A)
+        corrente_secundario_a = _scale(sec_rms, ADC_MAX, CURRENT_MAX_A)
+
+        fft_120, fft_240 = fft_analyzer.analyze_samples(vib_samples, sample_rate=fs)
+
+        medidas = {
+            "temperatura_c": temperatura_c,
+            "vibracao_rms_v": vibracao_rms_v,
+            "corrente_primario_a": corrente_primario_a,
+            "corrente_secundario_a": corrente_secundario_a,
+        }
+
+        diagnostico_python = diagnostic_engine.analyze({"medidas": medidas}, fft_120, fft_240)
+
+        payload = {
             "timestamp_pc": timestamp_pc,
+            "type": "telemetry",
+            "data_mode": "samples",
             "seq": packet.get("seq"),
-            "ms_arduino": packet.get("ms"),
-            "temperatura_c": medidas.get("temperatura_c"),
-            "vibracao_rms_v": medidas.get("vibracao_rms_v"),
-            "corrente_primario_a": medidas.get("corrente_primario_a"),
-            "corrente_secundario_a": medidas.get("corrente_secundario_a"),
-            "adc_ntc": adc.get("ntc"),
-            "adc_vibracao": adc.get("vibracao"),
-            "adc_sct_primario": adc.get("sct_primario"),
-            "adc_sct_secundario": adc.get("sct_secundario"),
-            "alarme_geral": alarmes.get("geral"),
-            "alarme_temperatura": alarmes.get("temperatura"),
-            "alarme_vibracao": alarmes.get("vibracao"),
-            "alarme_primario": alarmes.get("primario"),
-            "alarme_secundario": alarmes.get("secundario"),
+            "ms": packet.get("ms"),
+            "fs": fs,
+            "samples": {
+                "ntc": ntc_samples,
+                "vibracao": vib_samples,
+                "sct_primario": prim_samples,
+                "sct_secundario": sec_samples,
+            },
+            "sample_stats": {
+                "ntc_avg": ntc_avg,
+                "vibracao_rms": vib_rms,
+                "sct_primario_rms": prim_rms,
+                "sct_secundario_rms": sec_rms,
+            },
+            "adc": {
+                "ntc": ntc_avg,
+                "vibracao": vib_rms,
+                "sct_primario": prim_rms,
+                "sct_secundario": sec_rms,
+            },
+            "medidas": medidas,
+            "alarmes": {},
+            "diagnostico_arduino": None,
+            "diagnostico_python": diagnostico_python,
+            "fft": {
+                "amp_120hz": fft_120,
+                "amp_240hz": fft_240,
+            },
+        }
+
+        datalogger.log(
+            {
+                "timestamp_pc": timestamp_pc,
+                "seq": packet.get("seq"),
+                "ms_arduino": packet.get("ms"),
+                "temperatura_c": temperatura_c,
+                "vibracao_rms_v": vibracao_rms_v,
+                "corrente_primario_a": corrente_primario_a,
+                "corrente_secundario_a": corrente_secundario_a,
+                "adc_ntc": ntc_avg,
+                "adc_vibracao": vib_rms,
+                "adc_sct_primario": prim_rms,
+                "adc_sct_secundario": sec_rms,
+                "alarme_geral": None,
+                "alarme_temperatura": None,
+                "alarme_vibracao": None,
+                "alarme_primario": None,
+                "alarme_secundario": None,
+                "diagnostico_arduino": None,
+                "diagnostico_python": diagnostico_python,
+                "fft_120hz": fft_120,
+                "fft_240hz": fft_240,
+            }
+        )
+    else:
+        adc = packet.get("adc") or {}
+        medidas = packet.get("medidas") or {}
+        alarmes = packet.get("alarmes") or {}
+
+        fft_120, fft_240 = fft_analyzer.add_sample(adc.get("vibracao"))
+        diagnostico_python = diagnostic_engine.analyze(packet, fft_120, fft_240)
+        diagnostico_arduino = packet.get("diagnostico")
+
+        payload = {
+            "timestamp_pc": timestamp_pc,
+            "type": "telemetry",
+            "data_mode": "telemetry",
+            "seq": packet.get("seq"),
+            "ms": packet.get("ms"),
+            "adc": adc,
+            "medidas": medidas,
+            "alarmes": alarmes,
             "diagnostico_arduino": diagnostico_arduino,
             "diagnostico_python": diagnostico_python,
-            "fft_120hz": fft_120,
-            "fft_240hz": fft_240,
+            "fft": {
+                "amp_120hz": fft_120,
+                "amp_240hz": fft_240,
+            },
         }
-    )
+
+        datalogger.log(
+            {
+                "timestamp_pc": timestamp_pc,
+                "seq": packet.get("seq"),
+                "ms_arduino": packet.get("ms"),
+                "temperatura_c": medidas.get("temperatura_c"),
+                "vibracao_rms_v": medidas.get("vibracao_rms_v"),
+                "corrente_primario_a": medidas.get("corrente_primario_a"),
+                "corrente_secundario_a": medidas.get("corrente_secundario_a"),
+                "adc_ntc": adc.get("ntc"),
+                "adc_vibracao": adc.get("vibracao"),
+                "adc_sct_primario": adc.get("sct_primario"),
+                "adc_sct_secundario": adc.get("sct_secundario"),
+                "alarme_geral": alarmes.get("geral"),
+                "alarme_temperatura": alarmes.get("temperatura"),
+                "alarme_vibracao": alarmes.get("vibracao"),
+                "alarme_primario": alarmes.get("primario"),
+                "alarme_secundario": alarmes.get("secundario"),
+                "diagnostico_arduino": diagnostico_arduino,
+                "diagnostico_python": diagnostico_python,
+                "fft_120hz": fft_120,
+                "fft_240hz": fft_240,
+            }
+        )
 
     app.state.last_telemetry = payload
     loop = getattr(app.state, "loop", None)
@@ -136,19 +276,6 @@ serial_manager = SerialManager(
 )
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
-    app.state.loop = asyncio.get_running_loop()
-    datalogger.start_new_session()
-    serial_manager.connect(PORTA_PADRAO, BAUD_PADRAO)
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    serial_manager.disconnect()
-    datalogger.close()
-
-
 @app.get("/api/status")
 def get_status() -> Dict[str, Any]:
     return {
@@ -159,6 +286,14 @@ def get_status() -> Dict[str, Any]:
         "last_packet": serial_manager.last_packet,
         "last_error": serial_manager.last_error,
     }
+
+
+@app.get("/api/telemetry/latest", response_model=None)
+def get_latest_telemetry() -> Dict[str, Any] | Response:
+    payload = getattr(app.state, "last_telemetry", None)
+    if not payload:
+        return Response(status_code=204)
+    return payload
 
 
 @app.post("/api/serial/connect")
@@ -223,3 +358,9 @@ async def ws_telemetry(websocket: WebSocket) -> None:
             await websocket.receive_text()
     except WebSocketDisconnect:
         await ws_manager.disconnect(websocket)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

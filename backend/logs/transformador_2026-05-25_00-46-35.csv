@@ -1,0 +1,3 @@
+timestamp_pc,seq,ms_arduino,temperatura_c,vibracao_rms_v,corrente_primario_a,corrente_secundario_a,adc_ntc,adc_vibracao,adc_sct_primario,adc_sct_secundario,alarme_geral,alarme_temperatura,alarme_vibracao,alarme_primario,alarme_secundario,diagnostico_arduino,diagnostico_python,fft_120hz,fft_240hz
+2026-05-25T00:46:36.681,,197003,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0
+2026-05-25T00:46:38.474,,198370,,,,,,,,,,amarelo,verde,verde,verde,"['Temperatura elevada. Verificar ventilacao, carga e isolamento termico.']",Operacao normal dentro dos limites simulados.,0.0,0.0

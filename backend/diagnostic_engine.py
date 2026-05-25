@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Iterable, Tuple
 
 import numpy as np
 
@@ -13,20 +13,42 @@ class FftAnalyzer:
         self._buffer = deque(maxlen=buffer_size)
 
     def add_sample(self, value: Any) -> Tuple[float, float]:
-        try:
-            numeric = float(value)
-        except (TypeError, ValueError):
-            return 0.0, 0.0
+        return self.add_samples([value])
 
-        self._buffer.append(numeric)
+    def add_samples(self, values: Iterable[Any]) -> Tuple[float, float]:
+        for value in values:
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                continue
+            self._buffer.append(numeric)
+
         if len(self._buffer) < self.buffer_size:
             return 0.0, 0.0
 
-        data = np.array(self._buffer, dtype=float)
+        return self._compute_fft(np.array(self._buffer, dtype=float), self.sample_rate_hz)
+
+    def analyze_samples(
+        self, values: Iterable[Any], sample_rate: float | None = None
+    ) -> Tuple[float, float]:
+        samples = []
+        for value in values:
+            try:
+                samples.append(float(value))
+            except (TypeError, ValueError):
+                continue
+
+        if len(samples) < 8:
+            return 0.0, 0.0
+
+        rate = float(sample_rate) if sample_rate else self.sample_rate_hz
+        return self._compute_fft(np.array(samples, dtype=float), rate)
+
+    def _compute_fft(self, data: np.ndarray, sample_rate: float) -> Tuple[float, float]:
         data = data - np.mean(data)
         window = np.hanning(len(data))
         spectrum = np.fft.rfft(data * window)
-        freqs = np.fft.rfftfreq(len(data), d=1.0 / self.sample_rate_hz)
+        freqs = np.fft.rfftfreq(len(data), d=1.0 / sample_rate)
         mags = np.abs(spectrum) / len(data)
 
         amp_120 = self._pick_nearest(freqs, mags, 120.0)

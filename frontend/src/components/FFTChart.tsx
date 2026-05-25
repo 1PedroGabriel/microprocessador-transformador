@@ -22,11 +22,21 @@ function FFTChart({ amp120, amp240 }: FFTChartProps) {
   return (
     <div className="card chart-card">
       <div className="status-label">FFT (120/240 Hz)</div>
-      <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
-          <XAxis dataKey="name" tick={{ fill: "var(--muted)", fontSize: 11 }} />
-          <YAxis tick={{ fill: "var(--muted)", fontSize: 11 }} />
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: -8 }}>
+          <CartesianGrid strokeDasharray="2 6" stroke="var(--grid-soft)" />
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "var(--muted)", fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            tick={{ fill: "var(--muted)", fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            width={42}
+          />
           <Tooltip
             formatter={(value: number) => `${Number(value).toFixed(3)} amp`}
             contentStyle={{
@@ -35,7 +45,7 @@ function FFTChart({ amp120, amp240 }: FFTChartProps) {
               color: "var(--text)",
             }}
           />
-          <Bar dataKey="amp" fill="#2ed0ff" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="amp" fill="#2ed0ff" radius={[6, 6, 0, 0]} barSize={32} />
         </BarChart>
       </ResponsiveContainer>
       <div className="placeholder">

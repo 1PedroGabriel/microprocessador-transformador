@@ -1,4 +1,4 @@
-import { StatusResponse } from "../types/telemetry";
+import { StatusResponse, TelemetryPacket } from "../types/telemetry";
 
 export const API_BASE = "http://localhost:8000/api";
 
@@ -56,4 +56,15 @@ export async function resetSerial(): Promise<boolean> {
     method: "POST",
   });
   return data.ok;
+}
+
+export async function getLatestTelemetry(): Promise<TelemetryPacket | null> {
+  const response = await fetch(`${API_BASE}/telemetry/latest`);
+  if (response.status === 204) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return (await response.json()) as TelemetryPacket;
 }

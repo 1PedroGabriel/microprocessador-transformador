@@ -119,6 +119,8 @@ class SerialManager:
             if not line:
                 continue
 
+            print(f"[serial] {line}", flush=True)
+
             try:
                 payload = json.loads(line)
             except json.JSONDecodeError:

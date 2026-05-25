@@ -15,7 +15,7 @@ type ControlPanelProps = {
   connected: boolean;
 };
 
-const baudRates = [9600, 115200];
+const baudRates = [9600, 57600, 115200];
 
 function ControlPanel({
   ports,
