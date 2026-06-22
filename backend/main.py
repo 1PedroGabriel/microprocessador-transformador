@@ -18,8 +18,8 @@ from diagnostic_engine import DiagnosticEngine, FftAnalyzer
 from report_generator import generate_report
 from serial_manager import SerialManager
 
-PORTA_PADRAO = "COM2"
-BAUD_PADRAO = 57600
+PORTA_PADRAO = "COM6"
+BAUD_PADRAO = 115200
 SAMPLE_RATE_HZ = 1000.0
 FFT_BUFFER_SIZE = 256
 ADC_MAX = 1023.0
@@ -115,6 +115,11 @@ def _scale(value: Optional[float], max_input: float, max_output: float) -> Optio
 
 def handle_packet(packet: Dict[str, Any]) -> None:
     packet_type = packet.get("type")
+    
+    is_new_format = "tempo_ms" in packet and "imu" in packet
+    if is_new_format:
+        packet_type = "telemetry"
+
     if packet_type not in {"telemetry", "samples"}:
         return
 
@@ -218,21 +223,49 @@ def handle_packet(packet: Dict[str, Any]) -> None:
             }
         )
     else:
-        adc = packet.get("adc") or {}
-        medidas = packet.get("medidas") or {}
-        alarmes = packet.get("alarmes") or {}
+        if is_new_format:
+            imu = packet.get("imu", {})
+            accel = imu.get("acelerometro", {})
+            temp = packet.get("temperatura") or imu.get("temperatura") or {}
+            corrente = packet.get("corrente", {})
+            
+            x = float(accel.get("x", 0.0) or 0.0)
+            y = float(accel.get("y", 0.0) or 0.0)
+            z = float(accel.get("z", 0.0) or 0.0)
+            vib_val = (x**2 + y**2 + z**2)**0.5
+            
+            adc = {}
+            medidas = {
+                "temperatura_c": temp.get("valor"),
+                "vibracao_rms_v": vib_val,
+                "corrente_primario_a": corrente.get("irms"),
+                "corrente_secundario_a": 0.0,
+            }
+            alarmes = {}
+            seq = packet.get("tempo_ms")
+            ms_arduino = packet.get("tempo_ms")
+            diagnostico_arduino = None
+        else:
+            adc = packet.get("adc") or {}
+            medidas = packet.get("medidas") or {}
+            alarmes = packet.get("alarmes") or {}
+            seq = packet.get("seq")
+            ms_arduino = packet.get("ms")
+            diagnostico_arduino = packet.get("diagnostico")
+            vib_val = adc.get("vibracao")
 
-        fft_120, fft_240 = fft_analyzer.add_sample(adc.get("vibracao"))
-        diagnostic_details = diagnostic_engine.analyze_details(packet, fft_120, fft_240)
+        fft_120, fft_240 = fft_analyzer.add_sample(vib_val)
+        
+        diag_packet = {"medidas": medidas, "adc": adc, "alarmes": alarmes}
+        diagnostic_details = diagnostic_engine.analyze_details(diag_packet, fft_120, fft_240)
         diagnostico_python = diagnostic_details["diagnostico"]
-        diagnostico_arduino = packet.get("diagnostico")
 
         payload = {
             "timestamp_pc": timestamp_pc,
             "type": "telemetry",
             "data_mode": "telemetry",
-            "seq": packet.get("seq"),
-            "ms": packet.get("ms"),
+            "seq": seq,
+            "ms": ms_arduino,
             "adc": adc,
             "medidas": medidas,
             "alarmes": alarmes,
@@ -245,12 +278,16 @@ def handle_packet(packet: Dict[str, Any]) -> None:
                 "amp_240hz": fft_240,
             },
         }
+        
+        if is_new_format:
+            payload["raw_imu"] = packet.get("imu")
+            payload["raw_corrente"] = packet.get("corrente")
 
         datalogger.log(
             {
                 "timestamp_pc": timestamp_pc,
-                "seq": packet.get("seq"),
-                "ms_arduino": packet.get("ms"),
+                "seq": seq,
+                "ms_arduino": ms_arduino,
                 "temperatura_c": medidas.get("temperatura_c"),
                 "vibracao_rms_v": medidas.get("vibracao_rms_v"),
                 "corrente_primario_a": medidas.get("corrente_primario_a"),
