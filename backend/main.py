@@ -151,7 +151,10 @@ def handle_packet(packet: Dict[str, Any]) -> None:
             "corrente_secundario_a": corrente_secundario_a,
         }
 
-        diagnostico_python = diagnostic_engine.analyze({"medidas": medidas}, fft_120, fft_240)
+        diagnostic_details = diagnostic_engine.analyze_details(
+            {"medidas": medidas}, fft_120, fft_240
+        )
+        diagnostico_python = diagnostic_details["diagnostico"]
 
         payload = {
             "timestamp_pc": timestamp_pc,
@@ -182,6 +185,8 @@ def handle_packet(packet: Dict[str, Any]) -> None:
             "alarmes": {},
             "diagnostico_arduino": None,
             "diagnostico_python": diagnostico_python,
+            "diagnostic_alerts": diagnostic_details["issues"],
+            "diagnostic_severity": diagnostic_details["severity"],
             "fft": {
                 "amp_120hz": fft_120,
                 "amp_240hz": fft_240,
@@ -218,7 +223,8 @@ def handle_packet(packet: Dict[str, Any]) -> None:
         alarmes = packet.get("alarmes") or {}
 
         fft_120, fft_240 = fft_analyzer.add_sample(adc.get("vibracao"))
-        diagnostico_python = diagnostic_engine.analyze(packet, fft_120, fft_240)
+        diagnostic_details = diagnostic_engine.analyze_details(packet, fft_120, fft_240)
+        diagnostico_python = diagnostic_details["diagnostico"]
         diagnostico_arduino = packet.get("diagnostico")
 
         payload = {
@@ -232,6 +238,8 @@ def handle_packet(packet: Dict[str, Any]) -> None:
             "alarmes": alarmes,
             "diagnostico_arduino": diagnostico_arduino,
             "diagnostico_python": diagnostico_python,
+            "diagnostic_alerts": diagnostic_details["issues"],
+            "diagnostic_severity": diagnostic_details["severity"],
             "fft": {
                 "amp_120hz": fft_120,
                 "amp_240hz": fft_240,

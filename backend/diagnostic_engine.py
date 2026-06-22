@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 import numpy as np
 
@@ -82,83 +82,181 @@ class DiagnosticEngine:
         self._temp_history = deque(maxlen=self.TREND_WINDOW)
 
     def analyze(self, telemetry: Dict[str, Any], fft_120: float, fft_240: float) -> str:
+        return self.analyze_details(telemetry, fft_120, fft_240)["diagnostico"]
+
+    def analyze_details(
+        self, telemetry: Dict[str, Any], fft_120: float, fft_240: float
+    ) -> Dict[str, Any]:
         medidas = telemetry.get("medidas") or {}
         temp = self._safe_float(medidas.get("temperatura_c"))
         vib = self._safe_float(medidas.get("vibracao_rms_v"))
         prim = self._safe_float(medidas.get("corrente_primario_a"))
         sec = self._safe_float(medidas.get("corrente_secundario_a"))
 
-        alerts = 0
-        critical = 0
-
+        issues: List[Dict[str, Any]] = []
         if temp is not None:
-            if temp >= self.TEMP_CRITICO:
-                critical += 1
-            elif temp >= self.TEMP_ALERTA:
-                alerts += 1
             self._temp_history.append(temp)
+            self._append_threshold_issue(
+                issues,
+                field="temperatura",
+                label="Temperatura",
+                value=temp,
+                unit="C",
+                warn_limit=self.TEMP_ALERTA,
+                crit_limit=self.TEMP_CRITICO,
+                description="Temperatura acima da faixa segura do transformador.",
+                actions=[
+                    "Verificar ventilacao, obstrucoes e funcionamento de coolers/exaustores.",
+                    "Reduzir carga temporariamente e confirmar se a temperatura estabiliza.",
+                    "Inspecionar isolamento, conexoes aquecidas e pontos de mau contato.",
+                ],
+            )
 
         if vib is not None:
-            if vib >= self.VIB_CRITICO:
-                critical += 1
-            elif vib >= self.VIB_ALERTA:
-                alerts += 1
+            self._append_threshold_issue(
+                issues,
+                field="vibracao",
+                label="Vibracao RMS",
+                value=vib,
+                unit="V",
+                warn_limit=self.VIB_ALERTA,
+                crit_limit=self.VIB_CRITICO,
+                description="Vibracao elevada no conjunto mecanico.",
+                actions=[
+                    "Checar fixacao do nucleo, bobinas e base do transformador.",
+                    "Procurar folgas mecanicas, desalinhamento ou ressonancia na instalacao.",
+                    "Comparar a leitura com uma nova aquisicao apos reaperto mecanico.",
+                ],
+            )
 
         if prim is not None:
-            if prim >= self.CORRENTE_PRIM_CRITICO:
-                critical += 1
-            elif prim >= self.CORRENTE_PRIM_ALERTA:
-                alerts += 1
+            self._append_threshold_issue(
+                issues,
+                field="primario",
+                label="Corrente do primario",
+                value=prim,
+                unit="A",
+                warn_limit=self.CORRENTE_PRIM_ALERTA,
+                crit_limit=self.CORRENTE_PRIM_CRITICO,
+                description="Corrente elevada no enrolamento primario.",
+                actions=[
+                    "Verificar inrush, saturacao do nucleo e tensao de alimentacao.",
+                    "Inspecionar sinais de falha inicial de isolacao no primario.",
+                    "Confirmar se a carga conectada esta dentro da especificacao do ensaio.",
+                ],
+            )
 
         if sec is not None:
-            if sec >= self.CORRENTE_SEC_CRITICO:
-                critical += 1
-            elif sec >= self.CORRENTE_SEC_ALERTA:
-                alerts += 1
+            self._append_threshold_issue(
+                issues,
+                field="secundario",
+                label="Corrente do secundario",
+                value=sec,
+                unit="A",
+                warn_limit=self.CORRENTE_SEC_ALERTA,
+                crit_limit=self.CORRENTE_SEC_CRITICO,
+                description="Corrente elevada no enrolamento secundario.",
+                actions=[
+                    "Verificar sobrecarga, curto parcial ou carga conectada fora do previsto.",
+                    "Medir a corrente com instrumento externo para confirmar a leitura.",
+                    "Isolar cargas suspeitas e repetir o teste por etapas.",
+                ],
+            )
 
         if fft_120 >= self.FFT_120_ALERTA:
-            alerts += 1
+            issues.append(
+                self._build_issue(
+                    field="fft_120hz",
+                    label="FFT 120 Hz",
+                    severity="warn",
+                    value=fft_120,
+                    unit="amp",
+                    limit=self.FFT_120_ALERTA,
+                    description="Assinatura de vibracao em 120 Hz fora do padrao.",
+                    actions=[
+                        "Verificar aperto mecanico do nucleo magnetico.",
+                        "Conferir fixacao das laminas e pontos de acoplamento mecanico.",
+                        "Repetir a coleta apos reaperto para comparar a amplitude.",
+                    ],
+                )
+            )
 
         if fft_240 >= self.FFT_240_ALERTA:
-            alerts += 1
+            issues.append(
+                self._build_issue(
+                    field="fft_240hz",
+                    label="FFT 240 Hz",
+                    severity="warn",
+                    value=fft_240,
+                    unit="amp",
+                    limit=self.FFT_240_ALERTA,
+                    description="Componente harmonica em 240 Hz acima do esperado.",
+                    actions=[
+                        "Investigar ressonancia mecanica ou deformacao no conjunto magnetico.",
+                        "Comparar com a assinatura historica do equipamento em carga similar.",
+                        "Inspecionar fixacoes e isoladores antes de manter operacao continua.",
+                    ],
+                )
+            )
 
         if self._is_temp_rising():
-            alerts += 1
+            issues.append(
+                self._build_issue(
+                    field="tendencia_temperatura",
+                    label="Tendencia de temperatura",
+                    severity="warn",
+                    value=self._temp_history[-1],
+                    unit="C",
+                    limit=self.TREND_DELTA,
+                    description="Temperatura em subida consistente na janela recente.",
+                    actions=[
+                        "Acompanhar a evolucao antes de aumentar carga.",
+                        "Conferir ventilacao e pontos de aquecimento local.",
+                        "Planejar parada se a tendencia continuar mesmo com carga reduzida.",
+                    ],
+                )
+            )
+
+        alerts = sum(1 for issue in issues if issue["severity"] == "warn")
+        critical = sum(1 for issue in issues if issue["severity"] == "crit")
 
         if critical >= 1 and (alerts + critical) >= 2:
-            return (
+            diagnostico = (
                 "Critico: multiplos indicadores anormais. Recomenda-se inspecao imediata "
                 "do transformador."
             )
-
-        if (alerts + critical) >= 2:
-            return (
+        elif (alerts + critical) >= 2:
+            diagnostico = (
                 "Critico: multiplos indicadores anormais. Recomenda-se inspecao imediata "
                 "do transformador."
             )
-
-        if temp is not None and temp >= self.TEMP_ALERTA:
-            return (
+        elif temp is not None and temp >= self.TEMP_ALERTA:
+            diagnostico = (
                 "Alerta termico: temperatura elevada. Verificar ventilacao, carga e "
                 "isolamento."
             )
-
-        if fft_120 >= self.FFT_120_ALERTA:
-            return (
+        elif fft_120 >= self.FFT_120_ALERTA:
+            diagnostico = (
                 "Manutencao: assinatura de vibracao em 120 Hz fora do padrao. "
                 "Verificar aperto mecanico do nucleo magnetico."
             )
-
-        if prim is not None and prim >= self.CORRENTE_PRIM_ALERTA:
-            return (
+        elif prim is not None and prim >= self.CORRENTE_PRIM_ALERTA:
+            diagnostico = (
                 "Alerta eletrico: corrente elevada no primario. Possivel inrush intenso, "
                 "saturacao do nucleo ou falha inicial de isolacao."
             )
+        elif sec is not None and sec >= self.CORRENTE_SEC_ALERTA:
+            diagnostico = (
+                "Alerta de sobrecarga: corrente elevada no secundario. Verificar carga conectada."
+            )
+        else:
+            diagnostico = "Operacao normal dentro dos limites simulados."
 
-        if sec is not None and sec >= self.CORRENTE_SEC_ALERTA:
-            return "Alerta de sobrecarga: corrente elevada no secundario. Verificar carga conectada."
-
-        return "Operacao normal dentro dos limites simulados."
+        return {
+            "diagnostico": diagnostico,
+            "severity": "crit" if critical else "warn" if alerts else "ok",
+            "issues": issues,
+        }
 
     def _is_temp_rising(self) -> bool:
         if len(self._temp_history) < 5:
@@ -171,3 +269,64 @@ class DiagnosticEngine:
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    def _append_threshold_issue(
+        self,
+        issues: List[Dict[str, Any]],
+        field: str,
+        label: str,
+        value: float,
+        unit: str,
+        warn_limit: float,
+        crit_limit: float,
+        description: str,
+        actions: List[str],
+    ) -> None:
+        if value >= crit_limit:
+            issues.append(
+                self._build_issue(
+                    field,
+                    label,
+                    "crit",
+                    value,
+                    unit,
+                    crit_limit,
+                    description,
+                    actions,
+                )
+            )
+        elif value >= warn_limit:
+            issues.append(
+                self._build_issue(
+                    field,
+                    label,
+                    "warn",
+                    value,
+                    unit,
+                    warn_limit,
+                    description,
+                    actions,
+                )
+            )
+
+    @staticmethod
+    def _build_issue(
+        field: str,
+        label: str,
+        severity: str,
+        value: float,
+        unit: str,
+        limit: float,
+        description: str,
+        actions: List[str],
+    ) -> Dict[str, Any]:
+        return {
+            "field": field,
+            "label": label,
+            "severity": severity,
+            "value": round(float(value), 4),
+            "unit": unit,
+            "limit": round(float(limit), 4),
+            "description": description,
+            "recommended_actions": actions,
+        }
