@@ -11,6 +11,7 @@ import {
   stopSerial,
 } from "./api/http";
 import { createTelemetrySocket, SocketState } from "./api/socket";
+import AlertPopup from "./components/AlertPopup";
 import AlarmLed from "./components/AlarmLed";
 import ControlPanel from "./components/ControlPanel";
 import DiagnosticPanel from "./components/DiagnosticPanel";
@@ -20,7 +21,7 @@ import SampleChart from "./components/SampleChart";
 import SpectrogramChart from "./components/SpectrogramChart";
 import StatusCard from "./components/StatusCard";
 import TrendChart from "./components/TrendChart";
-import { Alarmes, StatusResponse, TelemetryPacket, TrendPoint } from "./types/telemetry";
+import { Alarmes, DiagnosticAlert, StatusResponse, TelemetryPacket, TrendPoint } from "./types/telemetry";
 
 const MAX_POINTS = 200;
 const MAX_SPEC_COLUMNS = 120;
@@ -59,13 +60,27 @@ function App() {
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [events, setEvents] = useState<string[]>([]);
   const [spectrogram, setSpectrogram] = useState<number[][]>([]);
+  const [alertPopupOpen, setAlertPopupOpen] = useState(false);
   const perSecondRef = useRef<Accumulator | null>(null);
   const specSecondRef = useRef<string | null>(null);
   const lastDiagRef = useRef<string | null>(null);
   const lastPayloadKeyRef = useRef<string | null>(null);
+  const activeAlertKeyRef = useRef<string | null>(null);
+  const dismissedAlertKeyRef = useRef<string | null>(null);
 
   const handleTelemetry = (packet: TelemetryPacket) => {
     setLastTelemetry(packet);
+    const alertKey = getAlertSignature(packet.diagnostic_alerts ?? []);
+    activeAlertKeyRef.current = alertKey;
+    if (alertKey) {
+      if (dismissedAlertKeyRef.current !== alertKey) {
+        setAlertPopupOpen(true);
+      }
+    } else {
+      dismissedAlertKeyRef.current = null;
+      setAlertPopupOpen(false);
+    }
+
     const { secondKey, timeLabel } = getTimeInfo(packet.timestamp_pc);
     const isSamples = packet.data_mode === "samples";
     const stats = isSamples ? buildSampleStats(packet) : undefined;
@@ -222,20 +237,37 @@ function App() {
     window.open(`${API_BASE}/report/pdf`, "_blank");
   };
 
+  const handleCloseAlert = () => {
+    dismissedAlertKeyRef.current = activeAlertKeyRef.current;
+    setAlertPopupOpen(false);
+  };
+
   const alarmes = lastTelemetry?.alarmes ?? {};
+  const diagnosticAlerts = lastTelemetry?.diagnostic_alerts ?? [];
+  const diagnosticAccent = severityToAccent(lastTelemetry?.diagnostic_severity);
   const isSamples = lastTelemetry?.data_mode === "samples";
   const sampleStats = isSamples ? buildSampleStats(lastTelemetry) : undefined;
 
   const fft120 = lastTelemetry?.fft?.amp_120hz ?? 0;
   const fft240 = lastTelemetry?.fft?.amp_240hz ?? 0;
   const geralText =
-    typeof alarmes.geral === "string"
+    diagnosticAccent === "crit"
+      ? "Falha critica"
+      : diagnosticAccent === "warn"
+        ? "Aviso ativo"
+        : typeof alarmes.geral === "string"
       ? alarmes.geral
       : status.connected
         ? "Conectado"
         : "Desconectado";
   const geralAccent =
-    alarmes.geral !== undefined ? alarmToAccent(alarmes.geral) : status.connected ? "ok" : "idle";
+    diagnosticAccent !== "idle"
+      ? diagnosticAccent
+      : alarmes.geral !== undefined
+        ? alarmToAccent(alarmes.geral)
+        : status.connected
+          ? "ok"
+          : "idle";
 
   return (
     <div className="app">
@@ -281,7 +313,7 @@ function App() {
             )
           }
           unit={isSamples ? "adc" : "C"}
-          accent={alarmToAccent(alarmes.temperatura)}
+          accent={mergeAccent(alarmToAccent(alarmes.temperatura), alertAccentFor(diagnosticAlerts, ["temperatura", "tendencia_temperatura"]))}
         />
         <StatusCard
           label={isSamples ? "Vibracao RMS (ADC)" : "Vibracao RMS"}
@@ -292,7 +324,7 @@ function App() {
             )
           }
           unit={isSamples ? "adc" : "V"}
-          accent={alarmToAccent(alarmes.vibracao)}
+          accent={mergeAccent(alarmToAccent(alarmes.vibracao), alertAccentFor(diagnosticAlerts, ["vibracao"]))}
         />
         <StatusCard
           label={isSamples ? "SCT Prim RMS (ADC)" : "Corrente Primario"}
@@ -305,7 +337,7 @@ function App() {
             )
           }
           unit={isSamples ? "adc" : "A"}
-          accent={alarmToAccent(alarmes.primario)}
+          accent={mergeAccent(alarmToAccent(alarmes.primario), alertAccentFor(diagnosticAlerts, ["primario"]))}
         />
         <StatusCard
           label={isSamples ? "SCT Sec RMS (ADC)" : "Corrente Secundario"}
@@ -318,19 +350,19 @@ function App() {
             )
           }
           unit={isSamples ? "adc" : "A"}
-          accent={alarmToAccent(alarmes.secundario)}
+          accent={mergeAccent(alarmToAccent(alarmes.secundario), alertAccentFor(diagnosticAlerts, ["secundario"]))}
         />
         <StatusCard
           label="FFT 120 Hz"
           value={formatNumber(fft120, 3)}
           unit="amp"
-          accent={fft120 > 0.35 ? "warn" : "idle"}
+          accent={mergeAccent(fft120 > 0.35 ? "warn" : "idle", alertAccentFor(diagnosticAlerts, ["fft_120hz"]))}
         />
         <StatusCard
           label="FFT 240 Hz"
           value={formatNumber(fft240, 3)}
           unit="amp"
-          accent={fft240 > 0.3 ? "warn" : "idle"}
+          accent={mergeAccent(fft240 > 0.3 ? "warn" : "idle", alertAccentFor(diagnosticAlerts, ["fft_240hz"]))}
         />
         <StatusCard
           label="Status Geral"
@@ -343,11 +375,23 @@ function App() {
       <section className="panel">
         <div className="section-title">LEDs de Alarme</div>
         <div className="grid-leds">
-          <AlarmLed label="Geral" status={alarmToAccent(alarmes.geral)} />
-          <AlarmLed label="Temperatura" status={alarmToAccent(alarmes.temperatura)} />
-          <AlarmLed label="Vibracao" status={alarmToAccent(alarmes.vibracao)} />
-          <AlarmLed label="Primario" status={alarmToAccent(alarmes.primario)} />
-          <AlarmLed label="Secundario" status={alarmToAccent(alarmes.secundario)} />
+          <AlarmLed label="Geral" status={geralAccent} />
+          <AlarmLed
+            label="Temperatura"
+            status={mergeAccent(alarmToAccent(alarmes.temperatura), alertAccentFor(diagnosticAlerts, ["temperatura", "tendencia_temperatura"]))}
+          />
+          <AlarmLed
+            label="Vibracao"
+            status={mergeAccent(alarmToAccent(alarmes.vibracao), alertAccentFor(diagnosticAlerts, ["vibracao", "fft_120hz", "fft_240hz"]))}
+          />
+          <AlarmLed
+            label="Primario"
+            status={mergeAccent(alarmToAccent(alarmes.primario), alertAccentFor(diagnosticAlerts, ["primario"]))}
+          />
+          <AlarmLed
+            label="Secundario"
+            status={mergeAccent(alarmToAccent(alarmes.secundario), alertAccentFor(diagnosticAlerts, ["secundario"]))}
+          />
         </div>
       </section>
 
@@ -401,9 +445,11 @@ function App() {
         <DiagnosticPanel
           diagnosticoArduino={lastTelemetry?.diagnostico_arduino}
           diagnosticoPython={lastTelemetry?.diagnostico_python}
+          alerts={diagnosticAlerts}
         />
         <EventLog events={events} />
       </section>
+      <AlertPopup alerts={diagnosticAlerts} open={alertPopupOpen} onClose={handleCloseAlert} />
     </div>
   );
 }
@@ -441,6 +487,44 @@ function alarmToAccent(value: Alarmes[keyof Alarmes] | undefined): LedState {
     return "ok";
   }
   return "idle";
+}
+
+function severityToAccent(value: TelemetryPacket["diagnostic_severity"] | undefined): LedState {
+  if (value === "crit" || value === "warn" || value === "ok") {
+    return value;
+  }
+  return "idle";
+}
+
+function alertAccentFor(alerts: DiagnosticAlert[], fields: string[]): LedState {
+  let accent: LedState = "idle";
+  for (const alert of alerts) {
+    if (!fields.includes(alert.field)) {
+      continue;
+    }
+    accent = mergeAccent(accent, severityToAccent(alert.severity));
+  }
+  return accent;
+}
+
+function mergeAccent(current: LedState, incoming: LedState): LedState {
+  const rank: Record<LedState, number> = {
+    idle: 0,
+    ok: 1,
+    warn: 2,
+    crit: 3,
+  };
+  return rank[incoming] > rank[current] ? incoming : current;
+}
+
+function getAlertSignature(alerts: DiagnosticAlert[]) {
+  if (!alerts.length) {
+    return null;
+  }
+  return alerts
+    .map((alert) => `${alert.field}:${alert.severity}:${alert.limit ?? ""}`)
+    .sort()
+    .join("|");
 }
 
 function computeSpectrum(samples: number[]) {

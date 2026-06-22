@@ -6,6 +6,17 @@ export type Alarmes = {
   secundario?: boolean;
 };
 
+export type DiagnosticAlert = {
+  field: string;
+  label: string;
+  severity: "ok" | "warn" | "crit";
+  value?: number;
+  unit?: string;
+  limit?: number;
+  description: string;
+  recommended_actions: string[];
+};
+
 export type TelemetryPacket = {
   timestamp_pc?: string;
   type?: string;
@@ -40,6 +51,8 @@ export type TelemetryPacket = {
   alarmes?: Alarmes;
   diagnostico_arduino?: string;
   diagnostico_python?: string;
+  diagnostic_alerts?: DiagnosticAlert[];
+  diagnostic_severity?: "ok" | "warn" | "crit";
   fft?: {
     amp_120hz?: number;
     amp_240hz?: number;
